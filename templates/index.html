@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movie Review Sentiment</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="card">
+    <header>
+      <h1>Movie Review Classifier</h1>
+      <p class="sub">Paste a movie review. A TF-IDF + Logistic Regression model, running fully offline, predicts whether it is positive or negative.</p>
+    </header>
+
+    <form id="form" method="post"
+          action="{{ url_for('predict_form') }}"
+          data-api="{{ url_for('predict_api') }}">
+      <div class="samples">
+        <span>Try:</span>
+        <button type="button" class="chip" data-sample="One of the best films I have seen in years. The acting was superb, the story moved me, and the ending was perfect.">😍 Loved it</button>
+        <button type="button" class="chip" data-sample="A complete waste of time. The plot made no sense, the dialogue was painful, and I nearly walked out halfway through.">😡 Hated it</button>
+        <button type="button" class="chip" data-sample="Beautiful cinematography and a great soundtrack, but the second half dragged and the characters never felt real.">😐 Mixed</button>
+      </div>
+
+      <div class="field">
+        <textarea id="review" name="review" rows="7" maxlength="10000"
+                  placeholder="e.g. A brilliant film with stunning performances..."
+                  required>{{ review }}</textarea>
+        <div class="meta">
+          <span id="count">0 / 10000</span>
+          <span class="hint">Ctrl/⌘ + Enter to analyze</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" id="submit" class="primary">
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="submitText">Analyze</span>
+        </button>
+        <button type="button" id="clear" class="ghost">Clear</button>
+      </div>
+    </form>
+
+    <div id="error" class="error" role="alert" {% if not error %}hidden{% endif %}>{{ error }}</div>
+
+    {% set neg = ((result.probabilities.negative * 100) | round(1)) if result else 0 %}
+    {% set pos = ((result.probabilities.positive * 100) | round(1)) if result else 0 %}
+    {% set conf = ((result.confidence * 100) | round(1)) if result else 0 %}
+
+    <section id="result" class="result {{ result.sentiment if result else '' }}" aria-live="polite"
+             {% if not result %}hidden{% endif %}>
+      <div class="verdict">
+        <div class="ring" id="ring" style="--pct: {{ conf }}">
+          <span id="ringText">{{ conf }}%</span>
+        </div>
+        <div>
+          <div class="emoji" id="emoji">{{ '😊' if result and result.sentiment == 'positive' else '😞' }}</div>
+          <div class="label" id="label">{{ result.sentiment | capitalize if result else '' }}</div>
+          <div class="caption">model confidence</div>
+        </div>
+      </div>
+
+      <div class="split" role="img" aria-label="Probability split">
+        <div class="seg neg" id="segNeg" style="width: {{ neg }}%"></div>
+        <div class="seg pos" id="segPos" style="width: {{ pos }}%"></div>
+      </div>
+      <div class="legend">
+        <span class="neg-t">Negative <b id="negText">{{ neg }}%</b></span>
+        <span class="pos-t">Positive <b id="posText">{{ pos }}%</b></span>
+      </div>
+    </section>
+
+    <footer>Local-first · no data leaves your machine</footer>
+  </main>
+
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const form = $("form"), review = $("review"), result = $("result");
+      const errorBox = $("error"), submit = $("submit");
+
+      const updateCount = () => { $("count").textContent = `${review.value.length} / 10000`; };
+      review.addEventListener("input", updateCount);
+      updateCount();
+
+      document.querySelectorAll(".chip").forEach((chip) =>
+        chip.addEventListener("click", () => {
+          review.value = chip.dataset.sample;
+          updateCount();
+          form.requestSubmit();
+        })
+      );
+
+      $("clear").addEventListener("click", () => {
+        review.value = "";
+        updateCount();
+        result.hidden = true;
+        errorBox.hidden = true;
+        review.focus();
+      });
+
+      review.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") form.requestSubmit();
+      });
+
+      const showError = (msg) => {
+        errorBox.textContent = msg;
+        errorBox.hidden = false;
+        result.hidden = true;
+      };
+
+      const render = (r) => {
+        const pos = r.sentiment === "positive";
+        const pct = (n) => (n * 100).toFixed(1);
+        result.className = `result ${r.sentiment}`;
+        $("emoji").textContent = pos ? "😊" : "😞";
+        $("label").textContent = pos ? "Positive" : "Negative";
+        $("ring").style.setProperty("--pct", pct(r.confidence));
+        $("ringText").textContent = `${pct(r.confidence)}%`;
+        $("segNeg").style.width = `${pct(r.probabilities.negative)}%`;
+        $("segPos").style.width = `${pct(r.probabilities.positive)}%`;
+        $("negText").textContent = `${pct(r.probabilities.negative)}%`;
+        $("posText").textContent = `${pct(r.probabilities.positive)}%`;
+        errorBox.hidden = true;
+        result.hidden = false;
+      };
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        submit.disabled = true;
+        submit.classList.add("loading");
+        $("submitText").textContent = "Analyzing";
+        try {
+          const res = await fetch(form.dataset.api, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ review: review.value }),
+          });
+          const data = await res.json();
+          if (!res.ok) showError(data.error || "Something went wrong.");
+          else render(data);
+        } catch {
+          showError("Could not reach the server. Is the app running?");
+        } finally {
+          submit.disabled = false;
+          submit.classList.remove("loading");
+          $("submitText").textContent = "Analyze";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

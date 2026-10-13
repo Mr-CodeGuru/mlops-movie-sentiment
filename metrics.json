@@ -1,0 +1,6 @@
+{
+  "accuracy": 0.9123,
+  "f1": 0.913,
+  "train_size": 40000,
+  "test_size": 10000
+}
