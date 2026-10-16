@@ -9,6 +9,10 @@ Repository: https://github.com/Mr-CodeGuru/mlops-movie-sentiment
 
 This project trains a lightweight text classifier on the *IMDB Dataset of 50K Movie Reviews* (Kaggle: `lakshmi25npathi/imdb-dataset-of-50k-movie-reviews`) that labels a review as **positive** or **negative**. The trained model pipeline is serialized to `model.pkl` and served through a Flask application with input validation, a web interface and a REST API. The service is then packaged with Docker and deployed on AWS EC2.
 
+<p align="center">
+  <img width="623" alt="image" src="https://github.com/user-attachments/assets/41dc36cc-1d1e-41ea-b304-ed3c1ff2fc0c" />
+</p>
+
 The system is **local-first and lightweight**: it runs fully offline, needs no GPU and no external database, and the model file is only a few MB.
 
 **ML pipeline**
@@ -170,7 +174,7 @@ Note: `requirements-docker.txt` pins the same scikit-learn version that produced
 
 | Platform | URL | Status |
 |---|---|---|
-| **AWS (EC2)** | http://13.49.44.172:5000 (health check: http://13.49.44.172:5000/health) | Deployed on EC2 (`eu-north-1`). The public IP changes if the instance is stopped and started, and the instance may be terminated after evaluation to avoid charges, so the link can be offline. |
+| **AWS (EC2)** | http://13.49.44.172:5000<br>(health check: http://13.49.44.172:5000/health) | Deployed on EC2 (`eu-north-1`). The public IP changes if the instance is stopped and started, and the instance may be terminated after evaluation to avoid charges, so the link can be offline. |
 | **GCP (Compute Engine)** | Not available | Not deployed. Google Cloud requires a billing account with a payment method before the Compute Engine API can be enabled, and none was available for this lab. The same Docker image and the same steps used for AWS apply (create an Ubuntu VM, add a firewall rule for TCP 5000, install Docker, build and run the container). |
 
 ## 7. Notes
